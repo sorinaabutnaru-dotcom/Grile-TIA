@@ -1,0 +1,2967 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>Grile TIA – o întrebare pe ecran</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0b1220; --card:#121b2f; --border:rgba(255,255,255,.14);
+    --muted:#a8b3d6; --ok:#22c55e; --bad:#ef4444; --btn:#22c55e; --btn2:#334155;
+  }
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 20% 0%, #12264a, var(--bg));
+    color:#fff; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:18px;
+  }
+  .box{
+    width:min(980px,96vw);
+    background:rgba(18,27,47,.92);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .top{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;}
+  .meta{color:var(--muted); font-size:13px;}
+  h1{font-size:18px; margin:0;}
+  .qtext{margin:12px 0 10px; line-height:1.45; font-size:16px; white-space:pre-wrap;}
+  .options{display:grid; gap:10px; margin-top:10px;}
+  label.opt{
+    display:flex; gap:10px; align-items:flex-start;
+    padding:10px 12px; border-radius:12px; border:1px solid var(--border);
+    background:rgba(255,255,255,.02); cursor:pointer; user-select:none;
+  }
+  label.opt:hover{border-color:rgba(255,255,255,.24);}
+  input{margin-top:2px; transform:scale(1.15); accent-color:#7aa2ff;}
+  .controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px;}
+  button{
+    border:0; border-radius:12px; padding:10px 14px; color:#fff;
+    cursor:pointer; font-weight:650;
+  }
+  .btn-check{background:var(--btn);}
+  .btn-next{background:#2b6cb0;}
+  .btn-prev,.btn-reset{background:var(--btn2);}
+  button:disabled{opacity:.55; cursor:not-allowed;}
+  .result{margin-top:10px; min-height:22px; font-size:14px; color:var(--muted);}
+  .result.ok{color:var(--ok);}
+  .result.bad{color:var(--bad);}
+  .note{margin-top:6px; color:var(--muted); font-size:12px;}
+</style>
+</head>
+<body>
+  <div class="box" id="app">
+    <div class="top">
+      <div>
+        <h1>Grile TIA</h1>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="meta" id="score"></div>
+    </div>
+
+    <div class="qtext" id="qtext"></div>
+    <div class="options" id="options"></div>
+
+    <div class="result" id="result"></div>
+    <div class="note" id="note"></div>
+
+    <div class="controls">
+      <button class="btn-prev" id="prevBtn">Înapoi</button>
+      <button class="btn-check" id="checkBtn">Verifică</button>
+      <button class="btn-next" id="nextBtn">Următoarea</button>
+      <button class="btn-reset" id="resetBtn" style="margin-left:auto;">Reset</button>
+    </div>
+  </div>
+
+<script>
+/*
+  Indexare răspunsuri:
+  0=a, 1=b, 2=c, 3=d, 4=e, 5=f
+  - dacă e un singur răspuns corect: correct: 3
+  - dacă sunt mai multe: correct: [0,2,3]
+*/
+const questions = [
+  {
+    "num": 1,
+    "text": "Programul care monitorizeaza traficul de date dintre calculatorul personal si Internet, impiedicand accesul din exterior al cracker-ilor si programelor rau-intentionate, ca si eventualele transmisii rau-voitoare facute de pe calculatorul personal de aplicatii de tip cal troian instalate fara stirea utilizatorului, se numeste:",
+    "options": [
+      "a) keylogger",
+      "b) rootkit",
+      "c) calkoian",
+      "d) firewall",
+      "e) botnet",
+      "f) backdoor"
+    ],
+    "correct": [
+      3
+    ]
+  },
+  {
+    "num": 2,
+    "text": "A treia generatie de calculatoare se caracterizeaza prin:",
+    "options": [
+      "a) memorii ultrarapide",
+      "b) perfectionarea limbajelor de programare",
+      "c) prelucrari conversationale si in timp real",
+      "d) delimitarea unor clase distincte de calculatoare: microcalculatoare, minicalculatoare, mainframe-uri, supercalculatoare",
+      "e) microprogramare si realizare de firmware"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 3,
+    "text": "Transmiterea mesajelor utilizand protocolul TCP/IP presupune urmatoarele niveluri:",
+    "options": [
+      "a) Internet",
+      "b) Transport",
+      "c) legaturi de date",
+      "d) aplicatie",
+      "e) Extranet"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 4,
+    "text": "In cadrul sistemelor informationale moderne integrate vorbim de:",
+    "options": [
+      "a) faptul ca schimbarile in procesele economice nu pot fi reconfigurate in sistemul informational",
+      "b) 100% nici o varianta posibila",
+      "c) faptul ca baza de date unica nu elimina operatiile repetitive de actualizare (introducere si modificare)",
+      "d) inexistenta unei baze de date unice (date consistente si corecte)",
+      "e) nu exista posibilitatea de a genera rapoarte si informatii ad-hoc!"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 5,
+    "text": "Principalele dezavantaje ale lumii digitale sunt:",
+    "options": [
+      "a) disparitia dictaturii on-line",
+      "b) ciber-terorism",
+      "c) forme noi de comunicare",
+      "d) asumarea de identitate"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 6,
+    "text": "Calculatoarele personale au aparut si au reprezentat o tehnologie disruptiva in anul:",
+    "options": [
+      "a) 1971",
+      "b) 1989",
+      "c) 1975",
+      "d) 1986"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 7,
+    "text": "Cum apreciati urmatorul enunt: 'Modul de coordonare si relatiile dintre membrii echipei proiectului este unul dintre factorii care contribuie la succesul/insuccesul acestuia'?",
+    "options": [
+      "a) Fals",
+      "b) Adevarat"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 8,
+    "text": "Care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) Internet-ul reprezinta o retea rezultata din cuplarea mai multor retele informatice de tipuri variate, care se intinde pe intreg Globul",
+      "b) Internet-ul este un sistem de adrese e-mail prin care se pot referi, dupa principii unitare diverse resurse informationale de pe Glob",
+      "c) Internet-ul este un ansamblu de platforme tehnologice care nu permite interactiunea utilizatorilor",
+      "d) Internet-ul reprezinta o serie de conventii protocoale si instrumente folosite pentru a crea imaginea unei singure retele",
+      "e) Internet-ul este cel mai popular standard de retea din lume"
+    ],
+    "correct": [
+      0,
+      3
+    ]
+  },
+  {
+    "num": 9,
+    "text": "Cele mai cunoscute aplicatii Web 2.0 sunt:",
+    "options": [
+      "a) GPS-ul",
+      "b) Blog-urile",
+      "c) Semnele de carte (bookmarks-urile)",
+      "d) Podcasting-ul",
+      "e) Outsourcing-ul"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 10,
+    "text": " In zilele noastre datele provin din surse precum:",
+    "options": [
+      "a) diferiti senzori folositi pentru a cumula date despre clima, sol, ape etc",
+      "b) bibliotecile clasice",
+      "c) cautarile pe Internet",
+      "d) videoclipuri",
+      "e) site-urile de social media",
+      "f) cautarile in arhivele istorice"
+    ],
+    "correct": [
+      0,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 11,
+    "text": " Care dintre urmatoarele enunturi sunt adevarate:",
+    "options": [
+      "a) domeniul IT este foarte dinamic",
+      "b) domeniul IT este foarte stabil",
+      "c) utilizarea TIC a determinat schimbari esentiale in societate si economice",
+      "d) utilizarea TIC determina transferul inteligentei umane catre calculator"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 12,
+    "text": " Conceptul de lume digitala a aparut:",
+    "options": [
+      "a) in anii 80 ai secolului XIX",
+      "b) la inceputul secolului XXI",
+      "c) In anii 80 ai secolului XX"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 13,
+    "text": " Datele sunt utilizate pentru:",
+    "options": [
+      "a) pastrarea informatiilor pentru o utilizare anterioara",
+      "b) transmiterea informatiilor intre oameni",
+      "c) obtinerea de noi informatii prin prelucrari ulterioare"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 14,
+    "text": " In memoria interna, datele numerice intregi se pot reprezenta prin:",
+    "options": [
+      "a) puteri ale lui 10",
+      "b) complement fata de 1",
+      "c) puteri ale lui 2",
+      "d) complement fata de 2",
+      "e) marime si semn"
+    ],
+    "correct": [
+      1,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 15,
+    "text": " In stadiul 2 al globalizarii (Globalizare 2.0):",
+    "options": [
+      "a) lumea s-a redus de la dimensiune medie la dimensiune mare",
+      "b) lumea s-a redus de la dimensiune medie la dimensiune mica",
+      "c) s-a manifestata la nivel de companii, firme",
+      "d) costurile de transport din ce in ce mai mici",
+      "e) costurile telecomunicatiilor din ce in ce mai mari",
+      "f) companiile multinationale reprezinta principalul factor al schimbarii"
+    ],
+    "correct": [
+      1,
+      2,
+      3,
+      5
+    ]
+  },
+  {
+    "num": 16,
+    "text": " Tendinta generalizata este ca:",
+    "options": [
+      "a) puterea de calcul, spatiul de stocare si software-ul sa dispara",
+      "b) puterea de calcul, spatiul de stocare si software-ul sa coexiste exclusiv pe internet",
+      "c) puterea de calcul, spatiul de stocare si software-ul sa coexiste in medii amorfe",
+      "d) puterea de calcul, spatiul de stocare si software-ul sa fie inlocuite cu materiale organice"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 17,
+    "text": " Sistemul informational:",
+    "options": [
+      "a) realizeaza functiunile de comunicare, exploatare si pregatire a deciziilor",
+      "b) este un ansamblu de mijloace (cu precadere neinformatice)",
+      "c) este rezultanta a unui ansamblu de perceptie a realitatii de catre membrii intreprinderilor"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 18,
+    "text": " Un sistem de operare trebuie sa indeplineasca urmatoarele functii de baza:",
+    "options": [
+      "a) gestiunea lucrarilor",
+      "b) gestiunea intrarilor si iesirilor",
+      "c) gestiunea fisierelor",
+      "d) comunicarea cu utilizatorul"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 19,
+    "text": " Care dintre enunturile de mai jos sunt adevarate?",
+    "options": [
+      "a) informatiile se refera la date organizate, filtrate si ordonate",
+      "b) datele se refera la informatii organizate, filtrate si ordonate",
+      "c) trasatura fundamentala a informatiei este subiectivitatea",
+      "d) in cibernetica informatia este privita din punct de vedere sintactic, semantic si pragmatic",
+      "e) datele iau in considerare semnificatia"
+    ],
+    "correct": [
+      0,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 20,
+    "text": " In Word, intr-un document:",
+    "options": [
+      "a) numerotarea pagilor poate sa inceapa de la un anumit numar",
+      "b) numerotarea paginilor se poate realiza numai in zona Footer",
+      "c) nu pot fi inserate obiecte de tip SmartArt"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 21,
+    "text": " Afirmatia urmatoare: 'Datele furnizate la iesire pot reprezenta o anumita informatie pentru un utilizator si o alta pentru alt utilizator' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 22,
+    "text": " Ce categorii de sisteme informationale sunt pozitionate la nivelul suportului operational?",
+    "options": [
+      "a) informationale de birou",
+      "b) business intelligence",
+      "c) de prelucrare a cunostintelor",
+      "d) de prelucrare a tranzactiilor"
+    ],
+    "correct": [
+      3
+    ]
+  },
+  {
+    "num": 23,
+    "text": " Sistemele informationale la nivelul intregii intreprinderi:",
+    "options": [
+      "a) asigura, ca principal obiectiv, coerenta informationala (Enterprise Resource Planning - pachete de aplicatii care acopera toate ariile functionale: planificare, productie, vanzare, marketing, distributie, financiarcontabil etc.)",
+      "b) sunt adevarate 'pasarele' informationale din interiorul spre exteriorul organizatiei, pentru cuplarea cu sistemele informationale ale partenerilor de afaceri si dezvoltarea de piete si parteneriate electronice",
+      "c) sunt aceleasi cu cele functionale deoarece pentru fiecare departament exista o aplicatie program care informatizeaza toate lucrarile desfasurate in cadrul acestuia"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 24,
+    "text": " In stadiul 3 al globalizarii (Globalizare 3.0):",
+    "options": [
+      "a) colaborarea se manifesta numai intre tarile mici",
+      "b) pamantul devine din ce in ce mai mare",
+      "c) oamenii colaboreaza in legatura cu acelasi continut digital",
+      "d) pamantul devine 'din ce in ce mai mic'",
+      "e) colaborarea se manifesta la nivel de indivizi si grupuri mici"
+    ],
+    "correct": [
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 25,
+    "text": " Ce categorii de sisteme informationale sunt pozitionate la nivelul suportului pentru management?",
+    "options": [
+      "a) informationale pentru conducerea executiva",
+      "b) suport pentru decizii",
+      "c) de raportare manageriala",
+      "d) de prelucrare a cunostintelor",
+      "e) informationale de birou"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 26,
+    "text": " Identificati afirmatiile adevarate referitoare la viermii informatici:",
+    "options": [
+      "a) sunt mesaje electronice nesolicitate, trimise in masa si in mod automat catre un numar mare de utilizatori, fara ca acestia sa aiba posibilitatea de a se opune primirii lor",
+      "b) sunt programe cu capacitatea de a se autotransmite in retelele de calculatoare, fara interventia utilizatorului",
+      "c) sunt programe utilizate pentru modificarea sau simularea functiilor de baza ale unui sistem de operare dand posibilitatea unui atacator sa acceseze un sistem informatic de la distanta",
+      "d) fiecare program afectat de acest tip de malware se comporta la randul lui ca un vierme, infectia crescand astfel in proportie geometrica"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 27,
+    "text": " Aplicatiile de tip Business Intelligence faciliteaza activitati precum:",
+    "options": [
+      "a) apeluri telefonice la distanta",
+      "b) realizarea de plati electronice pentru taxe si impozite",
+      "c) analiza multidimensionala",
+      "d) realizarea graficelor avansate"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 28,
+    "text": " Din categoria software fac parte:",
+    "options": [
+      "a) programele intermediare",
+      "b) instrumentele Software specializate",
+      "c) programele de aplicatii",
+      "d) programele de baza"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 29,
+    "text": " Recunoasteti din lista urmatoare, riscurile ce tin de organizatie in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) resurse insuficiente",
+      "b) esecuri in reproiectarea proceselor de afaceri",
+      "c) comunicare ineficienta cu utilizatorul",
+      "d) training insuficient a utilizatorului final"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 30,
+    "text": " Sistemele informationale de asistare a deciziilor (Decision Support Systems -DSS):",
+    "options": [
+      "a) preiau datele generate de activitatea organizatiei in bazele de date interne si constituie infrastructura urmatoarelor niveluri ale sistemelor informationale",
+      "b) valorifica datele culese cu ajutorul sistemelor informationale de prelucrare a tranzactiilor, sub forma de rapoarte periodice destinate nivelurilor intermediare de conducere si au ca finalitate controlul",
+      "c) sunt sisteme informatice interactive care ofera managerilor raspunsuri rapide la intrebari ad-hoc si urmaresc pregatirea deciziei",
+      "d) sunt cunoscute si sub denumirea scurta: Birotica Misiunea lor este de a prelua prelucra, stoca si transmite date si informatii sub forma comunicat electronice intre birouri"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 31,
+    "text": " In Word, in cazul fuzionarii documentelor, adresele destinatarilor pot fi organizate folosind:",
+    "options": [
+      "a) Publisher",
+      "b) OneNote",
+      "c) PowerPoint",
+      "d) Outlook",
+      "e) Excel",
+      "f) Access"
+    ],
+    "correct": [
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "num": 32,
+    "text": " Gruparea calculatoarelor in generatii de calculatoare are in vedere parametri precum:",
+    "options": [
+      "a) pretul",
+      "b) tipul si dimensiunea memoriei interne",
+      "c) capacitatea de memorare a unitatilor CD ROM",
+      "d) aria de aplicabilitate"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 33,
+    "text": " Oferirea de garantii care atesta ca partile implicate pot gestiona proiectul se realizeaza cu ajutorul:",
+    "options": [
+      "a) Stakeholders",
+      "b) Ciclului de viata al dezvoltarii sistemelor",
+      "c) Managementului proiectului",
+      "d) Analizei cost-beneficiu"
+    ],
+    "correct": [
+      3
+    ]
+  },
+  {
+    "num": 34,
+    "text": " Printre atacurile informatice care ruleaza independent si se autodistribuie se numara:",
+    "options": [
+      "a) rootkit-urile",
+      "b) keylogger-ele",
+      "c) virusii",
+      "d) dialer-ele",
+      "e) viermii"
+    ],
+    "correct": [
+      2,
+      4
+    ]
+  },
+  {
+    "num": 35,
+    "text": " Elementele cheie ale tehnologiilor Web 2.0 sunt:",
+    "options": [
+      "a) colaborarea",
+      "b) crearea si impartasirea continutului generat de utilizatori",
+      "c) outsourcing-ul",
+      "d) comunicarea"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "num": 36,
+    "text": " Printre domeniile de aplicare pentru Business Intelligence se numara:",
+    "options": [
+      "a) divertisment decizii",
+      "b) prabusire vanzari si marketing",
+      "c) raportari generale",
+      "d) planificare si previziune"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 37,
+    "text": " Knowledge Management inseamna:",
+    "options": [
+      "a) managementul activelor imateriale",
+      "b) managementul cunostintelor",
+      "c) gestiunea managerilor cunoscuti"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 38,
+    "text": " Atacul prin care se incearca indisponibilizarea unei statii de lucru sau a unui site Web fata de utilizatorii sai de drept se numeste:",
+    "options": [
+      "a) botnet",
+      "b) spam",
+      "c) DDoS",
+      "d) Phishing"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 39,
+    "text": " Sistemele informationale de prelucrare a tranzactiilor (Transaction Processing System - TPS):",
+    "options": [
+      "a) sunt sisteme informatice interactive care ofera managerilor raspunsuri rapide la intrebari ad-hoc si urmaresc pregatirea deciziei",
+      "b) preiau datele generate de activitatea organizatiei in bazele de date interne si constituie infrastructura urmatoarelor niveluri ale sistemelor informationale",
+      "c) sunt cunoscute si sub denumirea scurta: Birotica. Misiunea lor este de a prelua, prelucra, stoca si transmite date si informatii sub forma comunicatiilor electronice intre birouri",
+      "d) valorifica datele culese cu ajutorul sistemelor informationale de prelucrare a tranzactiilor, sub forma de rapoarte periodice destinate nivelurilor intermediare de conducere si au ca finalitate controlul"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 40,
+    "text": " Care dintre enunturile de mai jos sunt adevarate:",
+    "options": [
+      "a) intelepciunea priveste viitorul",
+      "b) cunostintele includ strategii, practici, metode si abordari",
+      "c) datele, informatiile si cunoasterea vizeaza trecutul"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 41,
+    "text": " Cu referire la programele de traducere, care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) interpretoarele traduc programul sursa la fiecare executie a acestuia",
+      "b) programele traducatoare convertesc codul masina, scris intr-un limbaj de programare, in program sursa",
+      "c) compilatoarele traduc programul sursa la fiecare executie a acestuia",
+      "d) compilatoarele traduc programul sursa o singura data",
+      "e) interpretarea este mai putin eficienta decat compilarea",
+      "f) programele traducatoare convertesc programul sursa, scris intr- un limbaj de programare, in cod masina"
+    ],
+    "correct": [
+      0,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "num": 42,
+    "text": " In Word, semnele de carte (bookmarks) permit:",
+    "options": [
+      "a) revenirea rapida in anumite locatii",
+      "b) generarea automata a cuprinsului unui document",
+      "c) marcarea unor locatii (titluri de capitole, tabele, figuri, cuvinte)",
+      "d) deschiderea rapida a unui document",
+      "e) numerotarea automata a figurilor unui document"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 43,
+    "text": " Datele nestructurate sunt:",
+    "options": [
+      "a) intalnite in bazele de date, depozitele de date si solutiile enterprise",
+      "b) date brute",
+      "c) informatii cu un grad ridicat de organizare",
+      "d) date care au fost extrase de aplicatiile de pe Internet, dar nu au fost procesate in formate mai productive si mai semnificative"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 44,
+    "text": " Prelucrarea datelor se refera la operatii precum:",
+    "options": [
+      "a) stocarea",
+      "b) transmiterea",
+      "c) convertirea",
+      "d) regasirea",
+      "e) valorificarea"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 45,
+    "text": " Identificati afirmatiile adevarate referitoare la viru ii informatici: ș",
+    "options": [
+      "a) sunt mesaje electronice nesolicitate, trimise in masa si in mod automat catre un numar mare de utilizatori, fara ca acestia sa aiba posibilitatea de a se opune primirii lor",
+      "b) sunt programe utilizate pentru modificarea sau simularea functiilor de baza ale unui sistem de operare dand posibilitatea unui atacator sa acceseze un sistem informatic de la distanta",
+      "c) sunt programe cu capacitatea de a se autotransmite in retelele de calculatoare, fara interventia utilizatorului",
+      "d) fiecare program afectat de acest tip de malware se comporta la randul lui ca un vierme, infectia crescand astfel in proportie geometrica"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 46,
+    "text": " Nivelul legaturilor de date din cadrul protocolului TCP/IP:",
+    "options": [
+      "a) foloseste adrese IP, exprimate de regula ca 4 grupuri de cate 8 biti, fiecare grup fiind reprezentat de un numar intre 1 si 255",
+      "b) asigura 'impachetarea' mesajelor, indicand inceputul si sfarsitul acestora",
+      "c) foloseste ca echipamente specifice puntile (bridge-urile) si switch- urile",
+      "d) este responsabil de stabilirea conexiunilor final-la-final intre emitent si destinatar, atunci cand acestea sunt necesare"
+    ],
+    "correct": [
+      1,
+      2
+    ]
+  },
+  {
+    "num": 47,
+    "text": " Care dintre enunturile de mai jos sunt adevarate?",
+    "options": [
+      "a) un proces economic inseamna o colectie de activitati care preiau una sau mai multe iesiri si creeaza o iesire ce reprezinta valoare pentru un client",
+      "b) situatia companiilor poate fi mult imbunatatita prin optimizarea proceselor de afaceri",
+      "c) abordarea bazata pe proces nu trebuie sa cuprinda identificarea si mai ales managementul interactiunii dintre procese",
+      "d) orice organizatie reprezinta unul sau mai multe procese coerente si interconectate"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 48,
+    "text": " In cadrul unui sistem informational, cunostintele reprezinta:",
+    "options": [
+      "a) numere si fapte",
+      "b) date organizate, filtrate, ordonate dupa anumite criterii",
+      "c) abilitatea de a formula opinii si de a lua decizii",
+      "d) abilitatea de a interpreta informativ"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 49,
+    "text": " Sistemul informational de resurse umane:",
+    "options": [
+      "a) este un set de resurse umane si de capital care se ocupa de corelarea informatiei contabile, cu decizia financiara, de resursele de capital, de gestiunea financiara a intreprinderii",
+      "b) are in vedere angajarea, instruirea (pregatirea), salarizarea si recompensarea angajatilor unei organizatii",
+      "c) este un set de resurse umane si de capital care se ocupa de pregatirea informatiilor contabile si, de asemenea, de informatiile obtinute prin colectarea si prelucrarea tranzactiilor economice",
+      "d) este responsabil cu fabricarea bunurilor"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 50,
+    "text": " Managementul proiectelor ofera suport oricarei initiative deoarece:",
+    "options": [
+      "a) realizeaza economii financiare, de timp sau de alte resurse",
+      "b) are o abordare structurata prin care este promovat succesul initiativei",
+      "c) promoveaza comunicarea in cadrul organizatiei"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 51,
+    "text": " Prima faza in realizarea unui proiect este:",
+    "options": [
+      "a) Definirea si planificarea proiectului",
+      "b) Conceperea si initierea proiectului",
+      "c) Performanta si controlul proiectului",
+      "d) Lansarea si executia proiectului",
+      "e) Inchiderea proiectului"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 52,
+    "text": " Au importanta pentru automatizarea fluxurilor de lucru:",
+    "options": [
+      "a) standardele si protocoalele de comunicatie si de transfer (TCP/IP. HTTP)",
+      "b) limbajul HTML",
+      "c) combinatia dintre componentele PC si serviciile de curierat rapid"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 53,
+    "text": " Sistemele informationale integrate pentru gestiunea relatiilor cu clientii (Customer Relationship Management - CRM):",
+    "options": [
+      "a) plaseaza clientul in centrul preocuparilor organizatiilor pentru a-i propune cele mai potrivite produse si servicii",
+      "b) acopera cererea si aprovizionarea cu materii prime si materiale, fabricarea si asamblarea, depozitarea si urmarirea stocurilor, primirea si urmarirea comenzilor, distribuirea pe toate canalele si livrarea catre consumator",
+      "c) ofera avantajul integrarii fiind pachete multi-modul care sunt adaptate specificului si care pot fi ulterior extinse cu alte module"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 54,
+    "text": " Cu referire la microprocesoare, care dintre enunturile de mai jos sunt adevarate?",
+    "options": [
+      "a) lungimea cuvantului determina numarul de biti ce pot fi transportati simultan",
+      "b) viteza de tact reprezinta rata la care se executa operatiile elementare controlate de orologiu",
+      "c) lungimea cuvantului reprezinta numarul de biti pe care procesorul ii poate trata simultan",
+      "d) marimea magistralei reprezinta numarul de biti pe care procesorul ii poate trata simultan",
+      "e) marimea magistralei determina numarul de biti ce pot fi transportati simultan"
+    ],
+    "correct": [
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 55,
+    "text": " Tehnologiile de tip Business Intelligence au rolul de a:",
+    "options": [
+      "a) asigura transformarea ireversibila a cunostintelor in date",
+      "b) elimina informatiile din procesul decizional",
+      "c) transforma datele si informatiile in cunostinte"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 56,
+    "text": " In Word, prin fuzionarea documentelor se pot construi:",
+    "options": [
+      "a) Scrisori",
+      "b) grafice 3D",
+      "c) plicuri (etichete postale)",
+      "d) mesaje electronice"
+    ],
+    "correct": [
+      0,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 57,
+    "text": " Recunoasteti, din lista urmatoare, care sunt procesele economice din cadrul sistemelor informationale specifice functiunii resurse umane:",
+    "options": [
+      "a) pregatirea si dezvoltarea personalului",
+      "b) angajarea personalului",
+      "c) intocmirea rapoartelor financiar-contabile",
+      "d) rezolvarea conflictelor de munca",
+      "e) inregistrarea tranzactiilor",
+      "f) stabilirea necesarului de personal"
+    ],
+    "correct": [
+      0,
+      1,
+      3,
+      5
+    ]
+  },
+  {
+    "num": 58,
+    "text": " Cu referire la lumea digitala, care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) forumurile permit ca oricine sa intervina in dezbaterea unor subiecte",
+      "b) blogurile permit ca oricine sa devina autor de continut digital",
+      "c) aplicatiile informatice au devenit mai complexe dar mai simplu de utilizat",
+      "d) aplicatiile informatice au devenit mai simple dar mai greu de utilizat",
+      "e) retelele de socializare deschid noi dimensiuni relationarii inter- umane"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 59,
+    "text": " Recunoasteti, din lista urmatoare, riscurile ce tin de organizatie in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) asteptari nerealiste, accent pe detalii si pierderea din vedere a obiectivelor",
+      "b) lipsa de lichiditati, neachitarea obligatiilor contractuale ale partenerilor de afaceri",
+      "c) catastrofele naturale, incendiile",
+      "d) incapacitatea de a termina o sarcina la timp, slaba calitate a personalului"
+    ],
+    "correct": [
+      1,
+      2
+    ]
+  },
+  {
+    "num": 60,
+    "text": " Afirmatia urmatoare: 'Accesul utilizatorilor la informatiile din baza de date este posibil numai prin intermediul componentei software reprezentate de browser-ul Internet' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 61,
+    "text": " Care dintre urmatoarele enunturi sunt adevarate:",
+    "options": [
+      "a) memoria interna face parte din unitatea centrala",
+      "b) memoria interna pastreaza datele si programele in curs de prelucrare",
+      "c) unitatea de comanda si control dirijeaza functionarea intregului sistem de calcul",
+      "d) echipamentele de intrare asigura introducerea datelor in sistem",
+      "e) echipamentele de stocaj sunt unitati de memorie interna"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 62,
+    "text": " Cand este vorba de Big Data, varietatea se refera la:",
+    "options": [
+      "a) tipuri diverse de date (structurate, nestructurate, text, senzori etc.)",
+      "b) date neconforme",
+      "c) date improbabile",
+      "d) tipuri omogene de date (structurate)"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 63,
+    "text": " Cu referire la informatii, care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) trasatura fundamentala a informatiei este subiectivitatea",
+      "b) informatia ia intotdeauna in considerare semnificatia",
+      "c) informatiile se refera la datele care au fost filtrate si ordonate dupa anumite criterii",
+      "d) trasatura fundamentala a informatiei este obiectivitatea"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 64,
+    "text": " Recunoasteti, din lista urmatoare, care sunt procesele economice din cadrul sistemelor informationale specifice functiunii de desfacere si marketing:",
+    "options": [
+      "a) promovarea produselor si studii de piata",
+      "b) identificarea clientilor potentiali",
+      "c) achizitia de materii prime",
+      "d) identificarea oportunitatilor de pe piata",
+      "e) fabricarea produsului"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "num": 65,
+    "text": " Globalizarea a determinat schimbari:",
+    "options": [
+      "a) culturale",
+      "b) economice",
+      "c) climatologice",
+      "d) tehnologice"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "num": 66,
+    "text": " Recunoasteti, din lista urmatoare, riscurile ce tin de relatia cu terte parti in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) esecuri in reproiectarea proceselor de afaceri",
+      "b) riscuri ce provin din afectarea populatiei",
+      "c) riscuri provenite din relatiile legale si contractuale",
+      "d) resurse insuficiente"
+    ],
+    "correct": [
+      1,
+      2
+    ]
+  },
+  {
+    "num": 67,
+    "text": " Recunoasteti riscurile ce tin de resursele tehnologice si informationale ale organizatiei in implementarea sau in dezvoltarea sistemului informational din lista urmatoare:",
+    "options": [
+      "a) aplicatii implementate fara a indeplini cerintele initiale",
+      "b) documentarea inadecvata",
+      "c) instabilitatea tehnologiei curente",
+      "d) neintegrarea sistemelor din organizatie",
+      "e) conditii de piata in schimbare",
+      "f) actiuni daunatoare ale competitiei"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 68,
+    "text": " In Word, referintele poti fi plasate:",
+    "options": [
+      "a) la sfarsitul documentului",
+      "b) in subsolul paginilor",
+      "c) numai la sfarsitul documentului",
+      "d) numai in subsolul pagilor"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 69,
+    "text": " A patra generatie de calculatoare se caracterizeaza prin:",
+    "options": [
+      "a) limbaje de programare apropiate de limbajele naturale",
+      "b) dezvoltarea retelelor de calculatoare",
+      "c) optimizarea sistemelor de operare",
+      "d) calculatoare cu mai multe procesoare",
+      "e) circuite logice din tuburi electronice"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 70,
+    "text": " A doua generatie de calculatoare se caracterizeaza prin:",
+    "options": [
+      "a) memoria interna este separata de memoria externa",
+      "b) programe scrise in cod masina",
+      "c) circuite logice realizate din tranzistori",
+      "d) generalizarea utilizarii sistemelor de operare",
+      "e) viteza de lucru redusa"
+    ],
+    "correct": [
+      0,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 71,
+    "text": " Sistemul informatic:",
+    "options": [
+      "a) presupune ca mijloacele tehnice de prelucrare a datelor sunt calculatoarele electronice",
+      "b) realizeaza functiunile de comunicare, exploatare si pregatire a deciziilor",
+      "c) apare ca o componenta a sistemului informational",
+      "d) preia informatii ca intrari si transmite la iesire date",
+      "e) apare ca o componenta a sistemului de comunicare organizationala informala"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 72,
+    "text": " Care din urmatoarele enunturi reprezinta previziuni ale Cisco si Global Business Network referitoare la Internet pentru 2025:",
+    "options": [
+      "a) Importanta Internet-ului va scadea datorita cresterii accelerate a retelei Ethernet",
+      "b) Standardul HTML (Hyper Text Markup Language) va fi inlocuit de HTTP (Hyper Text Transfer Protocol)",
+      "c) Tastatura QWERTY nu va mai fi interfata primara a Internetului",
+      "d) Cea mai mare crestere a pietei legata de Internet va avea loc in afara economiilor cu venituri mari sau avansate de astazi"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 73,
+    "text": " Componentele principale ale sistemelor RFID sunt:",
+    "options": [
+      "a) sistem de procesare a datelor",
+      "b) cititor RFID",
+      "c) tag RFID cu rol de 'eticheta'",
+      "d) spatiu de stocare ca serviciu oferit de diversi furnizori"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 74,
+    "text": " Sistemul informational:",
+    "options": [
+      "a) realizeaza functiunile de comunicare, exploatare si pregatire a deciziilor",
+      "b) este un ansamblu de mijloace (cu precadere neinformatice)",
+      "c) este rezultanta a unui ansamblu de perceptie a realitatii de catre membrii intreprinderilor"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 75,
+    "text": " Avantaje generale RFID:",
+    "options": [
+      "a) rezistenta redusa la conditii de mediu aspre",
+      "b) posibilitatea de a realiza statistici si rapoarte in orice moment",
+      "c) durata de functionare de peste 20 ani",
+      "d) localizarea, identificarea si inventarierea obiectelor se pot realiza instantaneu",
+      "e) controlul si diminuarea pierderilor de materiale"
+    ],
+    "correct": [
+      1,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 76,
+    "text": " Afirmatia urmatoare: 'Tehnologia se refera la natura, nu la om, nu se refera la instrumente, ci la modul in care involueaza omul' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 77,
+    "text": " Necunoasterea modului de lucru al calculatoarelor, entuziasmul excesiv, oboseala, indiferenta sunt:",
+    "options": [
+      "a) greseli foarte frecvente ale angajatilor care lucreaza in sistemul informatic",
+      "b) atacuri malware",
+      "c) cauze ale erorilor angajatilor, pe care acestia trebuie sa incerce sa le elimine din comportamentul lor",
+      "d) probleme sociale aparute din cauza utilizarii excesive a internetului"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 78,
+    "text": " Marcati categoriile de participanti la dezvoltarea sistemelor informationale:",
+    "options": [
+      "a) Analisti financiari",
+      "b) Stakeholders",
+      "c) Manageri",
+      "d) Banci",
+      "e) Arhitecti",
+      "f) Utilizatori"
+    ],
+    "correct": [
+      1,
+      2,
+      5
+    ]
+  },
+  {
+    "num": 79,
+    "text": " Situatia de esec in implementarea sau in dezvoltarea sistemului informational apare din cauza:",
+    "options": [
+      "a) implicarii si acceptarii din partea utilizatorilor",
+      "b) utilizarii sistemelor doar pentru colectarea, prelucrarea datelor si obtinerea informatiilor",
+      "c) neimplicarii continue a managerilor executivi (top-manageri)",
+      "d) tratarii sistemului informational ca pe un sistem software"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 80,
+    "text": " Care dintre enunturile de mai jos sunt adevarate, cu referire la telemunca?",
+    "options": [
+      "a) telecommuters sunt muncitorii care lucreaza in telecomunicatii",
+      "b) in viitor numarul de telecommuters se va reduce dramatic",
+      "c) conexiunile wireless reduc timpul pentru deplasarea la locul de munca cu mijloacele de transport",
+      "d) telecomunicatiile fac posibila munca la domiciliu"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 81,
+    "text": " Care dintre urmatoarele enunturi sunt considerate noi tehnologii informationale si de comunicatie:",
+    "options": [
+      "a) internet-ul",
+      "b) platformele open-source",
+      "c) Cloud-Computing",
+      "d) transportul rapid",
+      "e) Global Position System",
+      "f) telecomunicatiile fixe"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 82,
+    "text": " Sistemele informationale departamentale:",
+    "options": [
+      "a) sunt adevarate 'pasarele' informationale din interiorul spre exteriorul organizatiei, pentru cuplarea cu sistemele informationale ale partenerilor de afaceri si dezvoltarea de piete si parteneriate electronice",
+      "b) asigura ca principal obiectiv, coerenta informationala (Enterprise Resource Planning - pachete de aplicatii care acopera toate ariile functionale: planificare, productie, vanzare, marketing, distributie financiarcontabil etc.)",
+      "c) sunt aceleasi cu cele functionale deoarece pentru fiecare departament exista o aplicatie program care informatizeaza toate lucrarile desfasurate in cadrul acestuia"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 83,
+    "text": " Realitatea Screen-based are ca principale caracteristici:",
+    "options": [
+      "a) vor fi ecrane peste tot",
+      "b) oricine, oricand, oriunde se va putea conecta folosind tehnologia senzoriala sau cea wireless",
+      "c) accesarea propriului continut digital va fi mai dificila datorita securitatii ridicate"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 84,
+    "text": " Importanta informatiei deriva din:",
+    "options": [
+      "a) oportunitate",
+      "b) accesibiliate",
+      "c) exactitate",
+      "d) consistenta",
+      "e) simplitate",
+      "f) irelevanta"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 85,
+    "text": " Comutarea pachetelor (packet switching) se bazeaza pe:",
+    "options": [
+      "a) descompunerea mesajului in portiuni care sunt transmise pe rute diferite si reasamblate la receptie",
+      "b) browserele Web Google Chrome si Internet Explorer",
+      "c) HTTP (Hyper Text Transfer Protocol), un limbaj de marcare care stabileste un set de standarde de baza privind modul in care un site Web trebuie sa fie organizat"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 86,
+    "text": " Care dintre urmatoarele argumente descurajeaza munca la distanta?",
+    "options": [
+      "a) cresterea numarului de navetisti",
+      "b) dificultati in organizarea de intalniri",
+      "c) loialitate scazuta",
+      "d) productivitate ridicata",
+      "e) lucrul la domiciliu necesita auto-disciplina"
+    ],
+    "correct": [
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 87,
+    "text": " Printre amenintarile care privesc dreptul la viata privata se numara:",
+    "options": [
+      "a) furtul de identitate, spyware, phishing",
+      "b) filigranarea digitala",
+      "c) plagiatul, pirateria",
+      "d) criptarea si semnatura digitala"
+    ],
+    "correct": [
+      0,
+      3
+    ]
+  },
+  {
+    "num": 88,
+    "text": " Semnatura electronica este:",
+    "options": [
+      "a) un cod folosit de autorii de virusi pentru a identifica in mod unic fiecare atac pe care il creeaza",
+      "b) realizarea formei neinteligibile a unui mesaj pentru a nu fi utilizat de persoanele neautorizate sa-l acceseze",
+      "c) atasata unor documente electronice (Word, PDF, email etc.) prin utilizarea unei aplicatii software si a unui dispozity securizat",
+      "d) oferita in Romania de cinci furnizori de servicii de certificare autorizati, la un pret de circa 5000 de Euro anual"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 89,
+    "text": " Identificati afirmatiile adevarate referitoare la caii troieni:",
+    "options": [
+      "a) sunt programe rau-voitoare deghizate intr-un dar pentru utilizator",
+      "b) sunt programe cu capacitatea de a se autotransmite in retelele de calculatoare, fara interventia utilizatorului",
+      "c) fiecare program afectat de acest tip de malware se comporta la randul lui ca un cal troian, infectia crescand astfel in proportie geometrica",
+      "d) sunt programe utilizate pentru modificarea sau simularea functiilor de baza ale unui sistem de operare, dand posibilitatea unui atacator sa acceseze un sistem informatie de la distanta",
+      "e) sunt mesaje electronice nesolicitate, trimise in masa si in mod automat catre un numar mare de utilizatori, fara ca acestia sa aiba posibilitatea de a se opune primirii lor"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 90,
+    "text": " Tehnologiile mobile pentru afaceri:",
+    "options": [
+      "a) reduc costurile de tranzactionare intre partenerii de afaceri",
+      "b) sunt in declin accentuat pe pietele emergente",
+      "c) genereaza cheltuieli care impiedica adoptarea lor pe scara larga",
+      "d) ofera companiilor posibilitatea de a se apropia de clientii aflati la distante geografice apreciabile"
+    ],
+    "correct": [
+      0,
+      3
+    ]
+  },
+  {
+    "num": 91,
+    "text": " Cum putem reprezenta Internetul?",
+    "options": [
+      "a) ca pe o ierarhie",
+      "b) ca pe o harta fractala (opte.org)",
+      "c) ca pe un set de protocoale preferat pentru companiile care doresc sa adopte sisteme deschise de comunicatii",
+      "d) ca pe o retea de cabluri si calculatoare, pur si simplu"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "num": 92,
+    "text": " Tehnologiile care stau la baza sistemelor informationale:",
+    "options": [
+      "a) au permis diversificarea ocupatiilor din nomenclatorul de meserii",
+      "b) nu permit invatarea continua a adultilor",
+      "c) sunt generatoare de formari profesionale continue"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 93,
+    "text": " Agentii software sunt:",
+    "options": [
+      "a) programe a caror actiune se declanseaza automat, la o comanda a utilizatorului",
+      "b) inteligenti (isi urmaresc scopurile si executa numai acele sarcini pentru care au fost programati, astfel incat sa-si optimizeze performantele)",
+      "c) autonomi (in sensul ca, uneori, dispun de senzori pentru supervizarea permanenta a mediului unde actioneaza)",
+      "d) adaptabili (la preferintele utilizatorului)"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 94,
+    "text": " Modelul Community Cloud se preteaza atunci cand:",
+    "options": [
+      "a) nu este nevoe de securitate pentru datele accesate in cloud",
+      "b) mai multe organizatii au interese comune si vor sa foloseasca aceeasi infrastructura IT",
+      "c) mai multe organizatii au interese total divergente si nu vor sa foloseasca aceeasi infrastructura IT",
+      "d) publicul larg are acces la datele din cloud-ul comunitar"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 95,
+    "text": " Rolul filigranarii digitale este:",
+    "options": [
+      "a) de a asigura actualizarea periodica a sistemului de operare, pentru a-l proteja impotriva programelor rauintentionate",
+      "b) de a indica proprietarul datelor, de a tine evidenta copiilor si de a verifica integritatea datelor electronice",
+      "c) de a monitoriza traficul de date dintre calculatorul personal si Internet",
+      "d) de a modifica sau simula functiile de baza ale unui sistem de operare, dand posibilitatea unui atacator sa acceseze un sistem informatic de la distanta"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 96,
+    "text": " Prin Big Data se urmareste:",
+    "options": [
+      "a) rezistenta redusa la conditii de mediu aspre",
+      "b) obtinerea unui avantaj competitiv",
+      "c) stabilirea unei strategii de marketing bazata pe date cu o inalta acuratete si granularitate",
+      "d) controlul si diminuarea pierderilor de materiale",
+      "e) captarea informatilor despre piata, clienti, produse si servicii, analiza acestora"
+    ],
+    "correct": [
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 97,
+    "text": " Cele doua parti ale decalajului digital (Digital Divide) sunt formate din oamenii care:",
+    "options": [
+      "a) nu doresc sa aiba acces la Internet",
+      "b) nu au acces la Internet sau nu si-l pot permite",
+      "c) doresc sa aiba acces la internet dar nu ii lasa familia",
+      "d) au acces la Internet si il pot avea"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 98,
+    "text": " In categoria serviciilor Internet putem include:",
+    "options": [
+      "a) conectarea la distanta la un dispozitiv de calcul",
+      "b) WWW (World Wide Web)",
+      "c) platile electronice si electronic banking-ul",
+      "d) comertul electronic",
+      "e) retelele de consum"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 99,
+    "text": " Efectul Bullwhip (whipsaw effect):",
+    "options": [
+      "a) este cunoscut ca 'lovitura de bici'",
+      "b) influenteaza vanzarile lanturilor de retail",
+      "c) se refera la faptul ca fluctuatii relativ mici in schimbarea cererii clientilor pot fi amplificate dramatic de-a lungul lantului de aprovizionare",
+      "d) presupune distorsiuni semnificative in sistemul de aprovizionare"
+    ],
+    "correct": [
+      0,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 100,
+    "text": " Plagiatul este:",
+    "options": [
+      "a) dreptul fiecarui utilizator de a copia operele originale ale altor persoane",
+      "b) un fenomen cu totul nou, aparut ca urmare a cantitatii mari de informatie disponibile pe Internet si a usurintei de copiere a acesteia",
+      "c) posibil a fi contracarat de masuri ca filigranarea digitala si folosirea de aplicatii software de determinare a procentului de plagiat",
+      "d) incalcarea dreptului de autor, prin copierea operei altei persoane si asumarea ei ca o creatie proprie"
+    ],
+    "correct": [
+      3
+    ]
+  },
+  {
+    "num": 101,
+    "text": " Cum apreciati urmatorul enunt: 'Jaloanele/momentele reviziilor sunt puncte intermediare intre etapele ciclului de viata al dezvoltarii sistemelor/ciclului de viata al managementului proiectului'?",
+    "options": [
+      "a) Fals",
+      "b) Adevarat"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 102,
+    "text": " RFID (Radio Frequency Identification) reprezinta:",
+    "options": [
+      "a) O combinare intre Intranet si Internet",
+      "b) O tehnologie de determinare a locului in care se afla la un moment dat un calculator",
+      "c) O tehnologie care foloseste unde electromagnetice pentru identificarea automata a unor obiecte"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 103,
+    "text": " Cel de al treilea val din evolutia omenirii se caracterizeaza prin:",
+    "options": [
+      "a) boom-ul informational",
+      "b) revolutia cunoasterii",
+      "c) explozia informationala"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 104,
+    "text": " Mainframe-urile se caracterizeaza prin:",
+    "options": [
+      "a) securitate",
+      "b) stabilitate",
+      "c) scalabilitate",
+      "d) toleranta la erori",
+      "e) fiabilitate"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 105,
+    "text": " Afirmatia urmatoare: 'Sistemele de calcul nu opereaza cu date si numai prin asociere cu realitatea putem spune ca sistemele de calcul prelucreaza informatii' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 106,
+    "text": " Cu referire la cel de al patrulea val din evolutia omenirii, care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) necunoasterea este o sarcina de serviciu",
+      "b) este generat de revolutia cunoasterii",
+      "c) genereaza proteste fata de progresele tehnologice",
+      "d) cunoasterea este principala resursa"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 107,
+    "text": " Progresele inregistrate de omenire au depins organic de:",
+    "options": [
+      "a) cantitatea de informatie disponibila",
+      "b) rapiditatea vehicularii si utilizarii informatiilor",
+      "c) viteza conservarii fondului de cunostinte"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 108,
+    "text": " Din categoria software de baza fac parte:",
+    "options": [
+      "a) programele intermediare",
+      "b) programele de traducere",
+      "c) programele utilitare",
+      "d) sistemele de operare",
+      "e) programele constructoare"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 109,
+    "text": " Principalele caracteristici ale supercalculatoarelor sunt:",
+    "options": [
+      "a) contin cateva zeci de procesoare",
+      "b) sunt utilizate in explorari petroliere, previziuni meteorologice, animatie, grafica etc",
+      "c) sunt cele mai puternice, mai rapide si mai scumpe",
+      "d) primul supercalculator a fost realizat in anul 1947",
+      "e) sunt utilizate in aplicatii specializate",
+      "f) executa cateva programe cat se poate de rapid"
+    ],
+    "correct": [
+      1,
+      2,
+      4,
+      5
+    ]
+  },
+  {
+    "num": 110,
+    "text": " Cu referire la procesele economice:",
+    "options": [
+      "a) eficienta are in vedere raportul dintre rezultatele obtinute si resursele alocate",
+      "b) eficacitatea are in vedere capabilitatea de a obtine rezultatele planificate",
+      "c) eficacitatea are in vedere raportul dintre rezultatele obtinute si resursele alocate",
+      "d) eficienta are in vedere capabilitatea de a obtine rezultatele planificate"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 111,
+    "text": " Legea 677/2001 privind protectia persoanelor cu privire la prelucrarea datelor cu caracter personal si libera circulatie a acestor date interzice prelucrarea datelor cu caracter personal legate de:",
+    "options": [
+      "a) apartenenta sindicala a persoanelor",
+      "b) originea rasiala, etnica a persoanelor",
+      "c) starea de sanatate sau viata sexuala a persoanelor"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 112,
+    "text": " Printre problemele etice generate de Internet se numara:",
+    "options": [
+      "a) slabirea proceselor cognitive, a vocabularului abstract, a capacitatii de reflectie, a gandirii critice si imaginatiei",
+      "b) nerespectarea dreptului de proprietate asupra informatiilor",
+      "c) comportamentul nepoliticos, agresiv si vicios pe bloguri, forumuri si retele sociale",
+      "d) nerespectarea dreptului la viata privata"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 113,
+    "text": " Baza de date:",
+    "options": [
+      "a) este colectie de date aflate in interdependenta, impreuna cu descrierea datelor si a relatiilor dintre ele",
+      "b) presupune neintegrarea sistemelor din organizatie",
+      "c) este o colectie de date utilizata intr-o organizatie, colectie care este automatizata, partajata, definita riguros (formalizata) si controlata la nivel central",
+      "d) presupune rutina: evenimente care se petrec in fiecare zi"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 114,
+    "text": " Memoria externa a unui sistem de calcul:",
+    "options": [
+      "a) este o memorie suplimentara nevolatila",
+      "b) este alcatuita, in principal, din discuri magnetice si discuri optice",
+      "c) permite stocarea temporara, pe o perioada nedeterminata, a datelor si programelor",
+      "d) are o capacitate mai mica decat capacitatea memoriei interne"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 115,
+    "text": " Enterprise Computing se refera la:",
+    "options": [
+      "a) informatizarea unei organizatii din domeniul IT",
+      "b) integrarea tuturor dispozitivelor digitale dintr-o organizatie",
+      "c) reducerea costului total de proprietate al unui calculator (TCO)",
+      "d) integrarea tuturor dispozitivelor digitale dintr-o retea de calculatoare"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 116,
+    "text": " Situatia de esec in implementarea sau in dezvoltarea sistemului informational apare din cauza:",
+    "options": [
+      "a) implicarii continue a managerilor executivi (top-manageri)",
+      "b) pregatirii psihologice corespunzatoare a utilizatorilor",
+      "c) tratarii sistemului informational ca pe un sistem hardware",
+      "d) 100% nici o varianta posibila",
+      "e) comunicarii perfecte dintre membrii echipei de proiect"
+    ],
+    "correct": [
+      3
+    ]
+  },
+  {
+    "num": 117,
+    "text": " Printre avantajele unui sistem informational modern se regasesc:",
+    "options": [
+      "a) scaderea timpului de raspuns la cerintele de raportare",
+      "b) suportarea redundantei datelor si operatiunilor",
+      "c) adaptabilitatea",
+      "d) scalabilitatea",
+      "e) oferirea de informatii perimate"
+    ],
+    "correct": [
+      0,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 118,
+    "text": " Care dintre urmatoarele sintagme se refera la TIC si NTIC:",
+    "options": [
+      "a) New Information and Colaboration Techonology",
+      "b) New Information Technology",
+      "c) Information and Communication Technology",
+      "d) Information Technology",
+      "e) Information and Colaboration Technology"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 119,
+    "text": " Unitatea centrala a unui calculator electronic are urmatoarele componente:",
+    "options": [
+      "a) unitatea de comanda si control",
+      "b) memoria interna",
+      "c) unitatea aritmetica si logica",
+      "d) memoria externa"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 120,
+    "text": " Recunoasteti, din lista urmatoare, riscurile ce tin de mediul extern organizatiei in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) actiuni daunatoare ale competitiei",
+      "b) conditii de piata in schimbare",
+      "c) aplicatii software depasite"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 121,
+    "text": " Care dintre urmatoarele enunturi sunt considerate noi tehnologii informationale si de comunicatie:",
+    "options": [
+      "a) retelele de calculatoare",
+      "b) nanotehnologiile",
+      "c) platformele open-source",
+      "d) Cloud Computing"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 122,
+    "text": " Dezvoltarea sau imbunatatirea unui sistem informational se poate realiza prin:",
+    "options": [
+      "a) Copiere",
+      "b) Achizitionare de la un furnizor",
+      "c) Externalizare",
+      "d) Dezvoltare interna",
+      "e) Outsourcing"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 123,
+    "text": " Cu referire la memoria interna, care dintre enunturile de mai jos sunt adevarate:",
+    "options": [
+      "a) memoria de tip RAM poate inregistra orice tip de date",
+      "b) memoria de tip ROM este memoria de lucru care asigura stocarea datelor si programelor",
+      "c) memoria de tip RAM este o memorie volatila"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 124,
+    "text": " Printre dezavantajele unui sistem informational modern se regasesc:",
+    "options": [
+      "a) independenta de furnizor",
+      "b) necesitatea extinderii si dezvoltarii ulterioare a sistemului",
+      "c) integrarea completa a modulelor",
+      "d) proiecte de implementare si dezvoltare lente",
+      "e) complexitate"
+    ],
+    "correct": [
+      1,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 125,
+    "text": " Functiile realizate de programele utilitare sunt:",
+    "options": [
+      "a) sortarea fisierelor",
+      "b) tiparirea la imprimanta",
+      "c) operatii multiple asupra discurilor si fisierelor",
+      "d) medierea dialogului om-calculator"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 126,
+    "text": " Care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) realitatea Screen-based va deveni cotidiana",
+      "b) imprimantele 3D vor transforma fundamental medicina",
+      "c) educatia continua este o componenta a lumii digitale",
+      "d) medicina, prin noua generatie de TIC, va deveni o componenta a umii digitale"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 127,
+    "text": " Ce categorii de sisteme informationale sunt pozitionate la nivelul suportului pentru procesare de cunostinte?",
+    "options": [
+      "a) informationale de birou",
+      "b) de prelucrare a cunostintelor",
+      "c) business intelligence",
+      "d) de prelucrare a tranzactiilor"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 128,
+    "text": " Printre problemele sociale generate de Internet se numara:",
+    "options": [
+      "a) nerespectarea dreptului la viata privata",
+      "b) comportamentul nepoliticos, agresiv si vicios pe bloguri, forumuri si retele sociale",
+      "c) slabirea proceselor cognitive, a vocabularului abstract, a capacitatii de reflectie, a gandirii critice si imaginatiei",
+      "d) nerespectarea dreptului de proprietate asupra informatiilor",
+      "e) diminuarea capacitatii de concentrare"
+    ],
+    "correct": [
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 129,
+    "text": " Cu referire la conceptul de guvernare a datelor (data governance), care dintre enunturile de mai jos sunt adevarate:",
+    "options": [
+      "a) reuneste politicile si procesele care asigura disponibilitatea, utilizabilitatea, integritatea si securitatea datelor",
+      "b) a fost promovat de catre IBM",
+      "c) reuneste politicile si procesele care asigura accesarea limitata a datelor",
+      "d) a fost promovat de catre Microsoft",
+      "e) pune accent deosebit pe confidentialitatea si protectia datelor dintr-o organizatie"
+    ],
+    "correct": [
+      0,
+      1,
+      4
+    ]
+  },
+  {
+    "num": 130,
+    "text": " Pentru reprezentarea datelor in memoria interna se folosesc:",
+    "options": [
+      "a) coduri de reprezentare interna",
+      "b) programe traducatoare",
+      "c) limbaje de programare"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 131,
+    "text": " In Internetul obiectelor (lucrurilor):",
+    "options": [
+      "a) atacurile malware vor putea pune in pericol vietile indivizilor",
+      "b) granitele dintre spatiul public si cel privat vor deveni invizibile, iar oamenii nu vor sti unde ajung informatiile lor",
+      "c) se va inregistra un fenomen de adancire a decalajului digital"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 132,
+    "text": " Care dintre urmatoarele enunturi sunt adevarate?",
+    "options": [
+      "a) informatizarea organizatiilor se poate realiza in toate domeniile de activitate",
+      "b) tehnologiile digitale nu transforma locurile de munca din toate domeniile de activitate",
+      "c) informatizarea prin automatizarea productiei are ca efect reducerea fortei de munca",
+      "d) informatizarea prin automatizarea productiei are ca efect cresterea cantitatii de deseuri din instalatii",
+      "e) calculatoarele electronice asigura controlul calitatii productiei"
+    ],
+    "correct": [
+      0,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 133,
+    "text": " Printre elementele traditionale ale unui proiect regasim:",
+    "options": [
+      "a) Inchiderea proiectului",
+      "b) Deschiderea proiectului",
+      "c) Conceperea si initierea proiectului",
+      "d) Definirea si planificarea proiectului",
+      "e) Performanta si controlul proiectului"
+    ],
+    "correct": [
+      0,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 134,
+    "text": " Afirmatia urmatoare: 'Sistemul informational este identic cu sistemul informatic atunci cand toate relatiile informationale dintr-o organizatie, toate mijloacele si regulile sunt informatizate' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 135,
+    "text": " Sistemul informational:",
+    "options": [
+      "a) preia informatii ca intrari si transmite la iesire decizii",
+      "b) apare ca intermediar intre sistemul operational si sistemul decizional",
+      "c) preia informatii ca intrari si transmite la iesire date",
+      "d) preia date ca intrari si transmite la iesire informatii"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 136,
+    "text": " Cum apreciati urmatorul enunt: 'Analiza cost-beneficiu ofera garantii care atesta ca partile implicate pot gestiona proiectul propus'?",
+    "options": [
+      "a) Adevarat",
+      "b) Fals"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 137,
+    "text": " Din categoria programelor utilitare fac parte:",
+    "options": [
+      "a) File Conversion",
+      "b) Backup",
+      "c) Disk /Data recovery",
+      "d) Antivirus",
+      "e) COBOL",
+      "f) Basic"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 138,
+    "text": " Situatia de esec in implementare sau in dezvoltarea sistemului informational apare din cauza:",
+    "options": [
+      "a) lipsa pregatirii psihologice corespunzatoare a utilizatorilor",
+      "b) utilizarea sistemelor doar pentru colectarea, prelucrarea datelor si obtinerea informatiilor",
+      "c) neimplicarea si neacceptarea din partea utilizatorilor (ceea ce este cunoscut sub numele de rezistenta la schimbare)",
+      "d) instruirea insuficienta a utilizatorilor"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 139,
+    "text": " Prima generatie de calculatoare se caracterizeaza prin:",
+    "options": [
+      "a) programe scrise in limbaje de programare evoluate",
+      "b) capacitate mare de memorie",
+      "c) echipamente periferice lente",
+      "d) viteza de lucru mare",
+      "e) circuite logice realizate din tuburi electronice"
+    ],
+    "correct": [
+      2,
+      4
+    ]
+  },
+  {
+    "num": 140,
+    "text": " Minicalculatoarele:",
+    "options": [
+      "a) accepta sute de utilizatori",
+      "b) sunt sisteme specializate",
+      "c) nu pot fi servere de date in organizatii",
+      "d) sunt folosite ca servere in retelele locale"
+    ],
+    "correct": [
+      0,
+      3
+    ]
+  },
+  {
+    "num": 141,
+    "text": " In informatica, cu referire la cunostinte, care dintre enunturile de mai jos sunt adevarate:",
+    "options": [
+      "a) reprezinta totalitatea notiunilor, ideilor si informatiilor pe care le are cineva intr-un domeniu oarecare",
+      "b) sunt utilizate in procesul de fundamentare a deciziilor",
+      "c) cunoasterea bazata pe informatii produce decizii"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 142,
+    "text": " Cu referire la a cincea generatie de calculatoare, care dintre urmatoarele afirmatii sunt adevarate:",
+    "options": [
+      "a) se bazeaza pe principiile inteligentei artificiale",
+      "b) primul proiect a aparut in Japonia, in 1981",
+      "c) limbajele de programare sunt apropiate de limbajele naturale",
+      "d) nu sunt acceptate prelucrarile paralele"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 143,
+    "text": " Public Cloud:",
+    "options": [
+      "a) este cunoscut ca o forma de Cloud extern sau multi-chirias",
+      "b) reuneste chiriasi cu interese comune",
+      "c) pune la dispozitie o infrastructura IT omogena"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 144,
+    "text": " La alegerea unui calculator, cu referire la unitatea centrala de prelucrare, se analizeaza:",
+    "options": [
+      "a) numarul echipamentelor de intrare",
+      "b) compatibilitatea",
+      "c) viteza de digitizare",
+      "d) performanta"
+    ],
+    "correct": [
+      1,
+      3
+    ]
+  },
+  {
+    "num": 145,
+    "text": " Printre avantajele unui sistem informational modern se regasesc:",
+    "options": [
+      "a) informatiile de calitate",
+      "b) neadaptabilitatea",
+      "c) cresterea timpului de raspuns la cerintele de raportare",
+      "d) sistem de intretinere slab",
+      "e) evitarea redundantei datelor si operatiunilor"
+    ],
+    "correct": [
+      0,
+      4
+    ]
+  },
+  {
+    "num": 146,
+    "text": " Programul cu capacitatea de a se autotransmite in retelele de calculatoare, fara interventia utilizatorului, care ingreuneaza lucrul in retea prin consumul de largime de banda, se numeste:",
+    "options": [
+      "a) cal troian",
+      "b) rootkit",
+      "c) botnet",
+      "d) firewall",
+      "e) backdoor",
+      "f) vierme"
+    ],
+    "correct": [
+      5
+    ]
+  },
+  {
+    "num": 147,
+    "text": " Cu referire la sistemul de operare (SO), care dintre enunturile de mai jos sunt adevarate:",
+    "options": [
+      "a) So face parte din categoria programelor de aplicatii",
+      "b) SO asigura exploatarea eficienta a resurselor calculatorului",
+      "c) So faciliteaza executarea sarcinilor utilizatorului",
+      "d) la nivel elementar, SO este interpretul cerintelor utilizatorului"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 148,
+    "text": " Avantajele comutarii pachetelor de date sunt:",
+    "options": [
+      "a) este necesar ca fiecare calculator dintr-o retea sa fie legat in mod direct cu celelalte calculatoare cu care doreste sa comunice",
+      "b) sunt disponibile mai multe rute de comunicatie pentru date. In cazul in care o cale nu este libera, poate fi urmata o alta",
+      "c) interceptarea mesajelor de catre intrusi este dificila, ele fiind descompuse in parti care circula pe trasee diferite",
+      "d) transmiterea redundanta ofera garantia acuratetei informatiei si reduce numarul de erori"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 149,
+    "text": " Stadiul 3 al globalizarii (Globalizare 3.0) a fost accelerat de o serie de factori:",
+    "options": [
+      "a) outshoring-ul",
+      "b) lanturile de magazine",
+      "c) mesageria instantanee si partajarea fisierelor",
+      "d) caderea zidului Berlinului",
+      "e) outsourcing-ul",
+      "f) download-ul"
+    ],
+    "correct": [
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 150,
+    "text": " Codurile de reprezentare interna a datelor pot fi:",
+    "options": [
+      "a) Neponderate",
+      "b) ponderate",
+      "c) complementare",
+      "d) numerice",
+      "e) numerice cu semn",
+      "f) alfanumerice"
+    ],
+    "correct": [
+      3,
+      5
+    ]
+  },
+  {
+    "num": 151,
+    "text": " Confidentialitatea datelor si informatiilor este:",
+    "options": [
+      "a) pastrarea secreta a datelor si informatiilor",
+      "b) disponibilitatea datelor si informatiilor pentru persoanele autorizate la momentul la care acestea au nevoie de ele",
+      "c) caracterul complet si corect al datelor si informatiilor"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 152,
+    "text": " Aplicatiile mobile de tip MSA (Mobile Shopping Assistant) au rolul de a:",
+    "options": [
+      "a) usura tranzactia de vanzare-cumparare in cadrul magazinului",
+      "b) reduce timpul de asteptare la casele de marcat",
+      "c) diminua veniturile comerciantului pana la pragul real",
+      "d) indeparta clientul de comerciant"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 153,
+    "text": " Castigurile in afaceri datorate Social Media sunt:",
+    "options": [
+      "a) cresterea loialitatii clientilor",
+      "b) reducerea costurilor de calatorie si comunicare",
+      "c) cresterea costurilor de calatorie si comunicare"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 154,
+    "text": " Sistemele informationale pentru conducere (Management Information Systems - MIS):",
+    "options": [
+      "a) sunt cunoscute si sub denumirea scurta: Birotica. Misiunea lor este de a prelua, prelucra, stoca si transmite date si informatii sub forma comunicatiilor electronice intre birouri",
+      "b) valorifica datele culese cu ajutorul sistemelor informationale de prelucrare a tranzactiilor, sub forma de rapoarte periodice destinate nivelurilor intermediare de conducere si au ca finalitate controlul",
+      "c) preiau datele generate de activitatea organizatiei in bazele de date interne si constituie infrastructura urmatoarelor niveluri ale sistemelor informationale",
+      "d) sunt sisteme informatice interactive care ofera managerilor raspunsuri rapide la intrebari ad-hoc si urmaresc pregatirea deciziei"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 155,
+    "text": " Conform abordarii sistemice, organizatia este un sistem:",
+    "options": [
+      "a) socio-economic",
+      "b) probabilistic",
+      "c) dinamic",
+      "d) complex"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 156,
+    "text": " Transformarea adreselor URL in adrese numerice IP are loc la urmatorul nivel al protocolului TCP/IP:",
+    "options": [
+      "a) Legaturi de date",
+      "b) Transport",
+      "c) Aplicatie",
+      "d) Internet"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 157,
+    "text": " Cum apreciati urmatorul enunt: 'Punerea in aplicare a cunostintelor, aptitudinilor, instrumentelor si tehnicilor specifice activitatilor orientate spre proiecte, astfel incit sa fie atinse sau chiar depasite asteptarile beneficiarilor'?",
+    "options": [
+      "a) Adevarat",
+      "b) Fals"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 158,
+    "text": " Sistemele informationale interorganizationale:",
+    "options": [
+      "a) asigura, ca principal obiectiv, coerenta informationala (Enterprise Resource Planning - pachete de aplicatii care acopera toate ariile functionale: planificare, productie, vanzare, marketing, distributie, financiar-contabil etc.)",
+      "b) sunt adevarate 'pasarele informationale din interiorul spre exteriorul organizatiei, pentru cuplarea cu sistemele informationale ale partenerilor de afaceri si dezvoltarea de piete si parteneriate electronice",
+      "c) sunt aceleasi cu cele functionale deoarece pentru fiecare departament exista o aplicatie program care informatizeaza toate lucrarile desfasurate in cadrul acestuia"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 159,
+    "text": " Nivelul Internet din cadrul protocolului TCP/IP:",
+    "options": [
+      "a) foloseste ca echipamente specifice puntile (bridge-urile) si switch-urile",
+      "b) este responsabil de transmiterea mesajului de la un capat la celalalt al traseului pe care acesta il parcurge de la emitent la destinatar",
+      "c) foloseste adrese IP, exprimate de regula ca 4 grupuri de cate 8 biti, fiecare grup fiind reprezentat de un numar intre 1 si 255"
+    ],
+    "correct": [
+      1,
+      2
+    ]
+  },
+  {
+    "num": 160,
+    "text": " Atunci cand avem in vedere conceptul Social Media pentru companii, putem afirma:",
+    "options": [
+      "a) simpla prezenta pe o retea sociala nu aduce beneficii directe si rapide",
+      "b) Social Media nu functioneaza similar cu promotiile",
+      "c) simpla prezenta pe o retea sociala aduce beneficii directe si rapide",
+      "d) Social Media este o metoda de promovare care trebuie ignorata"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 161,
+    "text": " Care din urmatoarele afirmatii nu sunt adevarate?",
+    "options": [
+      "a) Pachetul reprezinta o secventa de biti care include datele propriu-zise si informatii de control pentru transmiterea datelor",
+      "b) Internet-ul poate fi reprezentat ca pe o nevoie de baza in piramida lui Maslow",
+      "c) Browser-ul este un program care permite utilizatorilor sa proceseze documente",
+      "d) HTTP (Hyper Text Transfer Protocol) - atribuie fiecarei adrese de server un nume, care este mai usor de memorat si utilizat"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 162,
+    "text": " Modelul Private Cloud se caracterizeaza prin:",
+    "options": [
+      "a) resurse dedicate",
+      "b) magazine de aplicatii",
+      "c) acces liber si neconditionat",
+      "d) infrastructura in-house"
+    ],
+    "correct": [
+      0,
+      3
+    ]
+  },
+  {
+    "num": 163,
+    "text": " Recunoasteti, din lista urmatoare, riscurile ce tin de organizatie in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) rutina: evenimente care se petrec in fiecare zi",
+      "b) inoperationale: riscuri ce afecteaza activitatea curenta a companiei",
+      "c) strategice: riscuri legate de strategia firmei",
+      "d) financiare: riscuri ce au legatura directa cu fluxurile financiare ale firmei"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 164,
+    "text": " Alegeti perechea de termeni care se potrivesc in spatiile libere din fraza 'Retelele de calculatoare compromise se numesc _____ si sunt folosite in general pentru transmiterea de_______':",
+    "options": [
+      "a) firewall --- viermi",
+      "b) backdoors --- zombie",
+      "c) botnets --- spam",
+      "d) spam --- botnets"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 165,
+    "text": " Sistemul informational financiar:",
+    "options": [
+      "a) este un set de resurse umane si de capital care se ocupa de corelarea informatiei contabile, cu decizia financiara, de resursele de capital, de gestiunea financiara a intreprinderii",
+      "b) este un set de resurse umane si de capital care se ocupa de pregatirea informatiilor contabile si, de asemenea, de informatiile obtinute prin colectarea si prelucrarea tranzactiilor economice",
+      "c) este responsabil cu fabricarea bunurilor",
+      "d) are in vedere angajarea, instruirea (pregatirea), salarizarea si recompensarea angajatilor unei organizatii"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 166,
+    "text": " In cadrul sistemelor informationale moderne integrate vorbim de:",
+    "options": [
+      "a) faptul ca schimbarile in procesele economice se reconfigureaza usor in sistemul informational",
+      "b) faptul ca structura modulara a sistemului faciliteaza adaugarea de noi componente",
+      "c) existenta unei baze de date unice (date consistente si corecte, rapoarte imbunatatite",
+      "d) posibilitatea de a genera rapoarte si informatii ad-hoc",
+      "e) faptul ca baza de date unica elimina operatiile repetitive de actualizare introducere si modificare)"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "num": 167,
+    "text": " Recunoasteti, din lista urmatoare, riscurile ce tin de stilul de conducere din organizatie in implementarea sau in dezvoltarea sistemului informational:",
+    "options": [
+      "a) inoperationale: riscuri ce afecteaza activitatea curenta companiei",
+      "b) lipsa sprijinului conducerii executive",
+      "c) schimbari in cerinte, leadership slab",
+      "d) inconsistente in politica de conducere",
+      "e) rutina: evenimente care se petrec in fiecare zi"
+    ],
+    "correct": [
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 168,
+    "text": " Globalizarea:",
+    "options": [
+      "a) la nivelul intregului glob, rezervele de cunoastere si resursele se conecteaza",
+      "b) este procesul de integrare a economiilor din intreaga lume cu aportul nemijlocit al progresului tehnologic",
+      "c) disparitia frontierelor politice si comerciale"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 169,
+    "text": " Principalele servicii oferite de Internet sunt:",
+    "options": [
+      "a) FTP (File Transfer Protocol)",
+      "b) URL (Uniform Resources Locator)",
+      "c) grupuri si forumuri de discutii",
+      "d) HTTP (Hyper Text Transfer Protocol)",
+      "e) HTML (Hyper Text Markup Language)"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 170,
+    "text": " Portal-ul reprezinta:",
+    "options": [
+      "a) o serie de conventii, protocoale si instrumente sunt folosite pentru a crea imaginea unei singure retele, cu toate ca dispozitivele din cadrul acesteia sunt foarte numeroase si diferite din perspectiva configuratiei hardware sau software",
+      "b) un canal securizat prin criptare intre dispozitivele din retea astfel ca datele sa fie transferate automat catre destinatari",
+      "c) un serviciu complex de informare, prezentare, comunicare si colaborare, prin care o organizatie isi promoveaza ideile, produsele, serviciile etc."
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 171,
+    "text": " Identificati afirmatiile adevarate dintre cele de mai jos:",
+    "options": [
+      "a) Internetul este o retea rezultata din cuplarea mai multor retele informatice de acelasi tip, care se intinde pe intreg Globul",
+      "b) Printre serviciile permise de Internet se numara chatul, forumurile de discutii, posta electronica",
+      "c) Internetul este o retea de comunicatii deschisa, construita pe principiile TCP/IP (Transmission Control Protocol/Internet Protocol)",
+      "d) Internetul se extinde astazi, conectand si obiecte cum ar fi semafoarele, televizoarele si imprimantele 3D"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "num": 172,
+    "text": " Stadiul trei al globalizarii (globalizare 3.0) a fost accelerat de mai multi factori:",
+    "options": [
+      "a) raspandirea Web-ului",
+      "b) grafica pe calculator",
+      "c) wireless-ul cu fir",
+      "d) aparitia calculatoarelor Apple si IBM",
+      "e) aparitia sistemelor de numeratie",
+      "f) software pentru automatizarea fluxurilor de lucru"
+    ],
+    "correct": [
+      0,
+      1,
+      3,
+      5
+    ]
+  },
+  {
+    "num": 173,
+    "text": " Web-ul semantic este:",
+    "options": [
+      "a) incercare de feri individul care 'navigheaza pe Internet de pericolul ratacirii, prin marcarea corecta si bine-intentionata a paginilor pe care le viziteaza",
+      "b) o extensie a Web-ului ce permite descrierea formala a resurselor existente pe Internet (pagini Web, documente text si multimedia, baze de date, servicii etc.)",
+      "c) o tehnologie care foloseste unde electromagnetice pentru identificarea automata a unor obiecte, prin etichetarea lor cu un microcip cu una sau doua atene, numit tag' (eticheta)"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 174,
+    "text": " Printre caracteristicile de baza ale aplicatiilor SaaS se numara:",
+    "options": [
+      "a) livrarea aplicatiilor pe sistemul 1-la-multe, opus modelului traditional 1-la-1",
+      "b) oprirea actualizarilor inainte de utilizarea de catre client",
+      "c) centralizarea aplicatiilor si oferirea de actualizari"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 175,
+    "text": " Licenta de utilizare este un mecanism prin care sunt precizate drepturi cum ar fi:",
+    "options": [
+      "a) programul va fi folosit doar intr-o anumita configuratie hardware/ software sau poate rula doar pe un singur calculator la un moment dat",
+      "b) stabilirea unei perioade maxime de utilizare a programului",
+      "c) interzicerea realizarii de copii ale manualelor de utilizare sau ale altor documentatii asociate",
+      "d) programul trebuie sa fie folosit numai in scopurile proprii ale celui care l-a cumparat"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "num": 176,
+    "text": " Maximizarea sanselor de succes ale unui proiect are in vedere urmatoarele constrangeri:",
+    "options": [
+      "a) Timp",
+      "b) Cantitate",
+      "c) Buget",
+      "d) Spatiu",
+      "e) Calitate"
+    ],
+    "correct": [
+      1,
+      2
+    ]
+  },
+  {
+    "num": 177,
+    "text": " Eye-tracking:",
+    "options": [
+      "a) reprezinta o buna metoda de cercetare in marketing",
+      "b) este un dispozitiv de indicare (Pointing Devices)",
+      "c) utilizeaza cele mai noi instrumente observationale in cercetarea comportamentului consumatorului"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "num": 178,
+    "text": " Integritatea datelor si informatiilor este:",
+    "options": [
+      "a) pastrarea secreta a datelor si informatiilor",
+      "b) disponibilitatea datelor si informatiilor pentru persoanele autorizate la momentul la care acestea au nevoie de ele",
+      "c) caracterul complet si corect al datelor si informatiilor",
+      "d) amenintata de erori si programe malware (ca de exemplu virusi)"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 179,
+    "text": " Afirmatia urmatoare: 'Sistemele de calcul nu opereaza cu date si numai prin asociere cu realitatea putem spune ca sistemele de calcul prelucreaza informatii' este:",
+    "options": [
+      "a) falsa",
+      "b) adevarata"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 180,
+    "text": " Cand este vorba de Big Data, viteza se refera la:",
+    "options": [
+      "a) necesitatea de a analiza datele in timp real",
+      "b) necesitatea de a genera date putine in intervale mari de timp",
+      "c) sugestia de a analiza datele fara a tine cont de vreo presiune a timpului",
+      "d) sugestia de a elimina datele neconforme"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 181,
+    "text": " Sistemele informationale integrate pentru gestiunea relatiilor cu furnizorii (Supply Chain Management - SCM):",
+    "options": [
+      "a) plaseaza clientul in centrul preocuparilor organizatiilor pentru a-i propune cele mai potrivite produse si servicii",
+      "b) acopera cererea si aprovizionarea cu materii prime si materiale, fabricarea si asamblarea, depozitarea si urmarirea stocurilor, primirea si urmarirea comenzilor, distribuirea pe toate canalele si livrarea catre consumator",
+      "c) ofera avantajul integrarii fiind pachete multi-modul care sunt adaptate specificului si care pot fi ulterior extinse cu alte module"
+    ],
+    "correct": [
+      1
+    ]
+  },
+  {
+    "num": 182,
+    "text": " Platformele de tip Business Intelligence:",
+    "options": [
+      "a) sunt dedicate doar nivelului operational",
+      "b) nu sunt folosite de catre manageri",
+      "c) utilizeaza colectii de aplicatii si baze de date",
+      "d) includ sisteme de asistare a deciziilor"
+    ],
+    "correct": [
+      2,
+      3
+    ]
+  },
+  {
+    "num": 183,
+    "text": " laas - Infrastructure as a Service inseamna:",
+    "options": [
+      "a) inchirierea unui procentaj dintr-un server",
+      "b) platforma cu o baza de date, servicii web etc.",
+      "c) infrastructura ca serviciu"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 184,
+    "text": " Beneficiile Software as a Service constau in:",
+    "options": [
+      "a) automatizarea procesului de actualizare software si servicii de managementul pach-urilor",
+      "b) diminuarea performantelor activitatii operationale ale companiei care utilizeaza SaaS",
+      "c) accesibilitatea globala, deoarece aplicatia poate fi accesata de oriunde atat timp cat exista acces Internet",
+      "d) compatibilitatea redusa intre clientul si furnizorul de SaaS"
+    ],
+    "correct": [
+      0,
+      2
+    ]
+  },
+  {
+    "num": 185,
+    "text": " Modelul Dedicated Cloud este destinat, in principal:",
+    "options": [
+      "a) mediilor private de afaceri",
+      "b) persoanelor pasionate de IT",
+      "c) comunitatilor studentesti pentru partajarea impresiilor",
+      "d) lucratorilor fara experienta in IT"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 186,
+    "text": " Programul utilizat pentru modificarea sau simularea functiilor de baza ale unui sistem de operare, dand posibilitatea unui atacator sa acceseze un sistem informatic de la distanta, se numeste:",
+    "options": [
+      "a) cal troian",
+      "b) botnet",
+      "c) rootkit",
+      "d) firewall",
+      "e) backdoor"
+    ],
+    "correct": [
+      2
+    ]
+  },
+  {
+    "num": 187,
+    "text": " Intre caracteristicile noii economii includem:",
+    "options": [
+      "a) importanta cunoasterii creste spectaculos in activitatea organizatiilor",
+      "b) ca urmare a disparitiei necesitatii contactului fizic, tranzactiile comerciale pot avea loc pe arii mult mai extinse",
+      "c) numarul intermediarilor traditionali intre solicitanti si ofertanti creste",
+      "d) importanta datelor creste spectaculos in activitatea organizatiilor"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  },
+  {
+    "num": 188,
+    "text": " Sistemul informational contabil:",
+    "options": [
+      "a) este un set de resurse umane si de capital care se ocupa de pregatirea informatiilor contabile si, de asemenea, de informatiile obtinute prin colectarea si prelucrarea tranzactiilor economice",
+      "b) are in vedere angajarea, instruirea (pregatirea), salarizarea si recompensarea angajatilor unei organizatii",
+      "c) este un set de resurse umane si de capital care se ocupa de corelarea informatiei contabile, cu decizia financiara, de resursele de capital, de gestiunea financiara a intreprinderii",
+      "d) este responsabil cu fabricarea bunurilor"
+    ],
+    "correct": [
+      0
+    ]
+  },
+  {
+    "num": 189,
+    "text": " Situatia de esec in implementarea sau in dezvoltarea sistemului informational apare din cauza:",
+    "options": [
+      "a) tratarii sistemului informational ca pe un sistem hardware",
+      "b) utilizarii sistemelor doar pentru colectarea, prelucrarea datelor si obtinerea informatiilor",
+      "c) asteptarilor nerealiste in privinta duratei de implementare",
+      "d) implicarii continue a managerilor executivi (top-manageri)",
+      "e) neimplicarii si neacceptarii din partea utilizatorilor"
+    ],
+    "correct": [
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "num": 190,
+    "text": " Tastatura laser virtuala:",
+    "options": [
+      "a) foloseste tehnica laser pentru a proiecta pe o suprafata plana si opaca un model de tastatura QWERTY",
+      "b) reprezinta cea mai compacta solutie de introducere a datelor",
+      "c) are dimensiuni mari comparativ cu tastatura clasica"
+    ],
+    "correct": [
+      0,
+      1
+    ]
+  }
+];
+
+let idx = 0;
+let score = 0;
+let checked = new Array(questions.length).fill(false);
+let userAnswer = new Array(questions.length).fill(null);
+
+const metaEl = document.getElementById("meta");
+const scoreEl = document.getElementById("score");
+const qtextEl = document.getElementById("qtext");
+const optionsEl = document.getElementById("options");
+const resultEl = document.getElementById("result");
+const noteEl = document.getElementById("note");
+
+function normalize(arr){
+  return Array.from(new Set(arr.map(Number))).sort((a,b)=>a-b);
+}
+function same(a,b){
+  a = normalize(a); b = normalize(b);
+  if (a.length !== b.length) return false;
+  for (let i=0;i<a.length;i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+function lettersFromIdx(arr){
+  return normalize(arr).map(i => String.fromCharCode(97+i)).join(", ");
+}
+
+function getSelection(){
+  const inputs = document.querySelectorAll('input[name="opt"]');
+  let sel = [];
+  inputs.forEach(inp => { if (inp.checked) sel.push(Number(inp.value)); });
+  return normalize(sel);
+}
+
+function setSelection(sel){
+  const inputs = document.querySelectorAll('input[name="opt"]');
+  inputs.forEach(inp => { inp.checked = sel.includes(Number(inp.value)); });
+}
+
+function render() {
+  const q = questions[idx];
+  metaEl.textContent = `Întrebarea ${idx + 1} / ${questions.length} (nr. ${q.num})`;
+  scoreEl.textContent = `Scor: ${score} / ${questions.length}`;
+  qtextEl.textContent = q.text;
+
+  const multi = Array.isArray(q.correct);
+  const type = multi ? "checkbox" : "radio";
+
+  optionsEl.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const label = document.createElement("label");
+    label.className = "opt";
+    label.innerHTML = `
+      <input type="${type}" name="opt" value="${i}">
+      <div>${opt}</div>
+    `;
+    optionsEl.appendChild(label);
+  });
+
+  // restore selection
+  if (userAnswer[idx] !== null) setSelection(userAnswer[idx]);
+
+  resultEl.textContent = "";
+  resultEl.className = "result";
+
+  noteEl.textContent = multi ? "Notă: pot fi mai multe răspunsuri corecte (bifezi mai multe)." : "";
+
+  document.getElementById("prevBtn").disabled = idx === 0;
+  document.getElementById("nextBtn").disabled = idx === questions.length - 1;
+}
+
+function recalcScore(){
+  score = 0;
+  for (let i=0;i<questions.length;i++){
+    if (!checked[i]) continue;
+    const q = questions[i];
+    if (q.correct === null) continue; // nu intră în scor
+    const ua = userAnswer[i] ?? [];
+    if (Array.isArray(q.correct)){
+      if (same(ua, q.correct)) score++;
+    } else {
+      if ((ua[0] ?? null) === q.correct) score++;
+    }
+  }
+}
+
+function check() {
+  const sel = getSelection();
+  if (sel.length === 0) {
+    alert("Alege cel puțin un răspuns!");
+    return;
+  }
+  userAnswer[idx] = sel;
+
+  const q = questions[idx];
+
+  // Dacă nu există cheie de corectare (correct: null), doar salvăm răspunsul.
+  if (q.correct === null) {
+    resultEl.textContent = "Răspuns salvat (fără cheie de corectare).";
+    resultEl.className = "result";
+    return;
+  }
+
+  const multi = Array.isArray(q.correct);
+
+  if (!checked[idx]) checked[idx] = true;
+
+  recalcScore();
+  scoreEl.textContent = `Scor: ${score} / ${questions.length}`;
+
+  if (multi) {
+    if (same(sel, q.correct)) {
+      resultEl.textContent = "Corect ✅";
+      resultEl.className = "result ok";
+    } else {
+      const corL = lettersFromIdx(q.correct);
+      resultEl.textContent = `Greșit ❌ (Corect: ${corL})`;
+      resultEl.className = "result bad";
+    }
+  } else {
+    if (sel[0] === q.correct) {
+      resultEl.textContent = "Corect ✅";
+      resultEl.className = "result ok";
+    } else {
+      const corL = String.fromCharCode(97 + q.correct);
+      const correctText = q.options[q.correct] || "";
+      resultEl.textContent = `Greșit ❌ (Corect: ${corL}) ${correctText}`;
+      resultEl.className = "result bad";
+    }
+  }
+}
+
+function next() {
+  const sel = getSelection();
+  if (sel.length) userAnswer[idx] = sel;
+
+  if (idx < questions.length - 1) { idx++; render(); }
+}
+function prev() {
+  const sel = getSelection();
+  if (sel.length) userAnswer[idx] = sel;
+
+  if (idx > 0) { idx--; render(); }
+}
+function resetAll() {
+  idx = 0; score = 0;
+  checked = new Array(questions.length).fill(false);
+  userAnswer = new Array(questions.length).fill(null);
+  render();
+}
+
+document.getElementById("checkBtn").addEventListener("click", check);
+document.getElementById("nextBtn").addEventListener("click", next);
+document.getElementById("prevBtn").addEventListener("click", prev);
+document.getElementById("resetBtn").addEventListener("click", resetAll);
+
+render();
+</script>
+</body>
+</html>
